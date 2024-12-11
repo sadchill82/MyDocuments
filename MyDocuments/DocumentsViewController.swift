@@ -7,131 +7,130 @@
 
 import UIKit
 
-class DocumentsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    
-    private var tableView: UITableView!
-    private var documents: [URL] = []
-    private let fileManager = FileManager.default
-    private let documentsDirectory: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+class DocumentsViewController: UITableViewController {
+    private var currentDirectory: URL = FileService.shared.documentsDirectory
+    private var files: [URL] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        title = "Documents"
-        view.backgroundColor = .white
-        setupTableView()
-        setupNavigationBar()
-        loadDocuments()
+        setupUI()
+        loadFiles()
     }
     
-    // MARK: - Setup UI
-    
-    private func setupTableView() {
-        tableView = UITableView(frame: view.bounds, style: .plain)
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "DocumentCell")
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(tableView)
-        
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-        ])
+    private func setupUI() {
+        title = currentDirectory.lastPathComponent
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addPhotoTapped))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Папка", style: .plain, target: self, action: #selector(addFolderTapped))
     }
     
-    private func setupNavigationBar() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Добавить фото",
-            style: .plain,
-            target: self,
-            action: #selector(addPhotoTapped)
-        )
+    private func loadFiles() {
+        files = FileService.shared.listFiles(in: currentDirectory)
+        tableView.reloadData()
     }
-    
-    // MARK: - Actions
     
     @objc private func addPhotoTapped() {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
-        present(imagePicker, animated: true, completion: nil)
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.sourceType = .photoLibrary
+        present(picker, animated: true)
     }
     
-    private func loadDocuments() {
-        do {
-            documents = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil, options: [])
-            tableView.reloadData()
-        } catch {
-            print("Error loading documents: \(error)")
+    private func promptForFileName(image: UIImage) {
+        let alertController = UIAlertController(title: "Введите имя файла", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "Имя файла"
+        }
+        let saveAction = UIAlertAction(title: "Сохранить", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            guard let fileName = alertController.textFields?.first?.text, !fileName.isEmpty else {
+                self.saveImage(image, withName: UUID().uuidString + ".jpg")
+                return
+            }
+            self.saveImage(image, withName: fileName + ".jpg")
+        }
+        alertController.addAction(saveAction)
+        alertController.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        present(alertController, animated: true)
+    }
+    
+    private func saveImage(_ image: UIImage, withName fileName: String) {
+        if let _ = FileService.shared.saveImage(image, named: fileName, in: currentDirectory) {
+            loadFiles()
         }
     }
     
-    private func saveImageToDocuments(image: UIImage) {
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else { return }
-        let fileName = UUID().uuidString + ".jpg"
-        let fileURL = documentsDirectory.appendingPathComponent(fileName)
-        
-        do {
-            try imageData.write(to: fileURL)
-            documents.append(fileURL)
-            tableView.reloadData()
-        } catch {
-            print("Error saving image: \(error)")
+    @objc private func addFolderTapped() {
+        let alertController = UIAlertController(title: "Создать папку", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "Имя папки"
         }
+        let createAction = UIAlertAction(title: "Создать", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            guard let folderName = alertController.textFields?.first?.text, !folderName.isEmpty else { return }
+            let folderURL = self.currentDirectory.appendingPathComponent(folderName)
+            do {
+                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+                self.loadFiles()
+            } catch {
+                print("Ошибка создания папки: \(error)")
+            }
+        }
+        alertController.addAction(createAction)
+        alertController.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        present(alertController, animated: true)
     }
     
-    private func deleteDocument(at indexPath: IndexPath) {
-        let fileURL = documents[indexPath.row]
-        do {
-            try fileManager.removeItem(at: fileURL)
-            documents.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
-        } catch {
-            print("Error deleting file: \(error)")
-        }
+    private func navigateToFolder(at folderURL: URL) {
+        let viewController = DocumentsViewController()
+        viewController.currentDirectory = folderURL
+        navigationController?.pushViewController(viewController, animated: true)
     }
     
-    // MARK: - Table View Data Source
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return documents.count
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return files.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "DocumentCell", for: indexPath)
-        let documentURL = documents[indexPath.row]
-        
-        cell.textLabel?.text = documentURL.lastPathComponent
-        if documentURL.pathExtension == "jpg" || documentURL.pathExtension == "png" {
-            let image = UIImage(contentsOfFile: documentURL.path)
-            cell.imageView?.image = image
-            cell.imageView?.contentMode = .scaleAspectFill
-            cell.imageView?.clipsToBounds = true
-            cell.imageView?.layer.cornerRadius = 8
-        }
-        
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "Cell")
+        let fileURL = files[indexPath.row]
+        cell.textLabel?.text = fileURL.lastPathComponent
+        cell.detailTextLabel?.text = FileService.shared.getFileMetadata(for: fileURL)
+        var isDirectory: ObjCBool = false
+        FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory)
+        cell.accessoryType = isDirectory.boolValue ? .disclosureIndicator : .none
         return cell
     }
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let fileURL = files[indexPath.row]
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            navigateToFolder(at: fileURL)
+        } else if let image = UIImage(contentsOfFile: fileURL.path) {
+            let detailsVC = DetailsViewController()
+            detailsVC.image = image
+            navigationController?.pushViewController(detailsVC, animated: true)
+        }
+    }
+    
+    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            deleteDocument(at: indexPath)
+            let fileURL = files[indexPath.row]
+            FileService.shared.deleteFile(at: fileURL)
+            loadFiles()
         }
     }
-    
-    // MARK: - Image Picker Delegate
-    
+}
+
+extension DocumentsViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        picker.dismiss(animated: true, completion: nil)
-        if let selectedImage = info[.originalImage] as? UIImage {
-            saveImageToDocuments(image: selectedImage)
+        picker.dismiss(animated: true)
+        if let image = info[.originalImage] as? UIImage {
+            promptForFileName(image: image)
         }
-    }
-    
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true, completion: nil)
     }
 }
