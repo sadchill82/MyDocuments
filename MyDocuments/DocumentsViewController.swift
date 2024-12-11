@@ -15,16 +15,22 @@ class DocumentsViewController: UITableViewController {
         super.viewDidLoad()
         setupUI()
         loadFiles()
+        NotificationCenter.default.addObserver(self, selector: #selector(loadFiles), name: .sortOrderChanged, object: nil)
     }
     
     private func setupUI() {
         title = currentDirectory.lastPathComponent
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addPhotoTapped))
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Папка", style: .plain, target: self, action: #selector(addFolderTapped))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Папка", style: .plain, target: self, action: #selector(addFolderTapped))
     }
     
-    private func loadFiles() {
+    @objc private func loadFiles() {
         files = FileService.shared.listFiles(in: currentDirectory)
+        if UserDefaults.standard.bool(forKey: "sortOrderAscending") {
+            files.sort { $0.lastPathComponent < $1.lastPathComponent }
+        } else {
+            files.sort { $0.lastPathComponent > $1.lastPathComponent }
+        }
         tableView.reloadData()
     }
     
