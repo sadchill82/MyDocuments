@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CE5BF3162D0A3DAB0045AC4D /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = CE5BF3152D0A3DAB0045AC4D /* KeychainAccess */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		CE566D292D064D330003209B /* MyDocuments.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyDocuments.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE5BF3162D0A3DAB0045AC4D /* KeychainAccess in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = MyDocuments;
 			packageProductDependencies = (
+				CE5BF3152D0A3DAB0045AC4D /* KeychainAccess */,
 			);
 			productName = MyDocuments;
 			productReference = CE566D292D064D330003209B /* MyDocuments.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = CE566D202D064D330003209B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				CE5BF3142D0A3DAB0045AC4D /* XCRemoteSwiftPackageReference "KeychainAccess" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CE566D2A2D064D330003209B /* Products */;
 			projectDirPath = "";
@@ -331,6 +340,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CE5BF3142D0A3DAB0045AC4D /* XCRemoteSwiftPackageReference "KeychainAccess" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kishikawakatsumi/KeychainAccess";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CE5BF3152D0A3DAB0045AC4D /* KeychainAccess */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CE5BF3142D0A3DAB0045AC4D /* XCRemoteSwiftPackageReference "KeychainAccess" */;
+			productName = KeychainAccess;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CE566D212D064D330003209B /* Project object */;
 }
